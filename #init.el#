@@ -57,7 +57,7 @@
 
 (use-package vertico-directory
   :after vertico
-  :ensure nil
+em  :ensure nil
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
 (defun jf/setup-minibuffer-abbrevs ()
@@ -302,12 +302,6 @@
       (vterm-other-window))
     (vterm-send-string (format " cd %S ; clear\n" dir))))
 
-(defun my/vterm-client-setup ()
-  (when (and (daemonp) 
-             (string= (buffer-name) "*scratch*"))
-    (vterm)))
-(add-hook 'server-after-make-frame-hook #'my/vterm-client-setup)
-
 (use-package clipetty
   :ensure t
   :hook (after-init . global-clipetty-mode))
@@ -326,13 +320,7 @@
 
 (use-package ewal-doom-themes
   :config
-  (defun my/apply-ewal-theme (&optional frame)
-    "Applies the ewal-doom-one theme to the current or new frame."
-    (with-selected-frame (or frame (selected-frame))
-      (load-theme 'ewal-doom-one t)))
-
-  (my/apply-ewal-theme)
-  (add-hook 'after-make-frame-functions #'my/apply-ewal-theme))
+  (load-theme 'ewal-doom-one t))
 
 (set-frame-parameter nil 'alpha-background 80)
 (add-to-list 'default-frame-alist '(alpha-background . 80))
