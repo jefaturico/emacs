@@ -22,7 +22,8 @@
       calendar-week-start-day 1
       large-file-warning-threshold (* 200 1024 1024)
       read-process-output-max (* 1024 1024)
-      ring-bell-function 'ignore)
+      ring-bell-function 'ignore
+      file-name-shadow-mode 1)
 
 (setq-default cursor-type 'bar)
 
@@ -53,6 +54,20 @@
 (use-package vertico
   :init
   (vertico-mode))
+
+(use-package vertico-directory
+  :after vertico
+  :ensure nil
+  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
+
+(defun my/setup-minibuffer-abbrevs ()
+  "Enable abbreviations for quick directory jumps."
+  (setq-local local-abbrev-table (make-abbrev-table))
+  (define-abbrev local-abbrev-table "~" "~/")
+  (define-abbrev local-abbrev-table "/" "//")
+  (abbrev-mode 1))
+
+(add-hook 'minibuffer-setup-hook #'my/setup-minibuffer-abbrevs)1
 
 (use-package marginalia
   :init
@@ -248,12 +263,6 @@
   :config
   (setq org-html-with-latex 'verbatim))
 
-;; Keybindings (Define these outside use-package or in :bind)
-;; Sync the current entry under the cursor
-(global-set-key (kbd "C-c n s") 'org-anki-sync-entry)
-;; Sync the entire buffer
-(global-set-key (kbd "C-c n a") 'org-anki-sync-all)
-
 (use-package pdf-tools
   :magic ("%PDF" . pdf-view-mode)
   :commands (pdf-view-mode)
@@ -277,7 +286,19 @@
               (blink-cursor-mode -1)
               (auto-revert-mode -1))))
 
-(use-package vterm :commands vterm)
+(use-package vterm
+  :commands vterm
+  :config
+  (setq vterm-shell "/run/current-system/sw/bin/bash")) ; Best for NixOS
+
+(defun jf/vterm-here ()
+  (interactive)
+  (let* ((dir default-directory)
+         (buf (get-buffer "*vterm*")))
+    (if (and buf (get-buffer-window buf))
+        (select-window (get-buffer-window buf))
+      (vterm-other-window))
+    (vterm-send-string (format " cd %S ; clear\n" dir))))
 
 (use-package clipetty
   :ensure t
@@ -316,4 +337,6 @@
 (global-set-key (kbd "C-x k") #'kill-current-buffer)
 (global-set-key (kbd "C-c p") #'jf/pick-pdf)
 (global-set-key (kbd "C-c w") #'org-agenda-list)
-(global-set-key (kbd "C-c <return>") #'vterm-other-window)
+(global-set-key (kbd "C-c <return>") #'jf/vterm-here)
+(global-set-key (kbd "C-c n s") 'org-anki-sync-entry)
+(global-set-key (kbd "C-c n a") 'org-anki-sync-all)

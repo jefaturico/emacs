@@ -9,4 +9,4 @@ org-roam.db*
 recentf*
 smex-items*
 tramp*
-.gitignore~
+*~
