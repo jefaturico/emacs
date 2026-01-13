@@ -17,15 +17,25 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
+(setq-default standard-indent 4)
+(setq-default electric-indent-inhibit nil)
+
 (setq use-short-answers t
       vc-follow-symlinks t
       calendar-week-start-day 1
       large-file-warning-threshold (* 200 1024 1024)
       read-process-output-max (* 1024 1024)
       ring-bell-function 'ignore
-      file-name-shadow-mode 1)
+      file-name-shadow-mode 1
+      confirm-kill-emacs 'y-or-no-p)
 
-(setq-default cursor-type 'bar)
+(add-hook 'server-after-make-frame-hook
+          (lambda ()
+            (unless (get-buffer "*vterm*")
+              (vterm))
+            (switch-to-buffer "*vterm*")))
 
 (recentf-mode 1)
 (setq recentf-max-menu-items 25
@@ -54,22 +64,6 @@
 (use-package vertico
   :init
   (vertico-mode))
-
-(use-package vertico-directory
-  :after vertico
-  :ensure nil
-  :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
-
-(defun jf/setup-minibuffer-abbrevs ()
-  "Enable abbreviations for quick directory jumps."
-  (setq-local local-abbrev-table (make-abbrev-table))
-  (define-abbrev local-abbrev-table "~" "~/")
-  (define-abbrev local-abbrev-table "/" "//")
-  (abbrev-mode 1))
-
-(setq save-abbrevs 'silently)
-
-(add-hook 'minibuffer-setup-hook #'jf/setup-minibuffer-abbrevs)
 
 (use-package marginalia
   :init
@@ -102,7 +96,7 @@
     (setq-local completion-at-point-functions
 		(list (cape-capf-super
                        #'eglot-completion-at-point
-                       ;; #'cape-dabbrev
+                       #'cape-dabbrev
                        #'cape-file))))
   (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
   (setq eglot-autoshutdown t)
@@ -114,13 +108,13 @@
 	res)))
 
   (with-eval-after-load 'eglot
-    (advice-add 'eglot--contact :around #'my/eglot-lsp-booster)))
+    (advice-add 'eglot--contact :around #'jf/eglot-lsp-booster)))
 
 (use-package corfu
   :ensure t
   :custom
   (corfu-auto t)                 
-  (corfu-auto-delay 0.3)         
+  (corfu-auto-delay 1.0)         
   (corfu-auto-prefix 2)          
   (corfu-cycle t)
   :init
@@ -129,7 +123,7 @@
 (use-package cape
   :ensure t
   :init
-;;  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-keyword))
 
@@ -145,16 +139,30 @@
   :diminish which-key-mode
   :init (which-key-mode)
   :config
-  (setq which-key-idle-delay 0.2))
+  (setq which-key-idle-delay 0.5))
 
-(setq-default mode-line-format
-      (list
-       " " mode-line-modified
-       " %[" mode-line-buffer-identification "%] %l %6 "
-       mode-line-misc-info
-       mode-line-end-spaces))
-(setq global-mode-string '((t jabber-activity-mode-string)
-			   "" display-time-string appt-mode-string))
+(use-package all-the-icons
+  :if (display-graphic-p))
+
+(use-package doom-modeline
+  :ensure t
+  :init (doom-modeline-mode 1)
+  :config
+  (setq doom-modeline-icon t
+        doom-modeline-major-mode-icon t
+        doom-modeline-minor-modes nil
+        doom-modeline-buffer-encoding nil
+        doom-modeline-indent-info nil
+        doom-modeline-vcs nil
+        vc-handled-backends nil
+        doom-modeline-env-version nil
+        doom-modeline-github nil
+        doom-modeline-buffer-file-name-style 'buffer-name
+        display-time-default-load-average nil 
+        display-time-format "%H:%M"           
+        doom-modeline-time-icon nil
+        doom-modeline-time t)
+  (display-time-mode 1))
 
 (use-package visual-fill-column
   :custom (visual-fill-column-center-text t)
@@ -171,39 +179,25 @@
   (setq visual-fill-column-width 100)
   (visual-fill-column-mode 1))
 
-(defun jf/set-font-faces ()
-  (message "Setting faces!")
-  (set-face-attribute 'default nil :font "JetBrainsMono Nerd Font" :height 160)
+(defun jf/apply-fonts (&optional frame)
+  (set-face-attribute 'default frame :font "JetBrainsMono Nerd Font" :height 160)
+  (set-face-attribute 'fixed-pitch frame :font "JetBrainsMono Nerd Font" :height 160)
+  (set-face-attribute 'variable-pitch frame :font "JetBrainsMono Nerd Font" :height 160 :weight 'regular))
 
-  (set-face-attribute 'fixed-pitch nil :font "JetBrainsMono Nerd Font" :height 160)
-
-  (set-face-attribute 'variable-pitch nil :font "JetBrainsMono Nerd Font" :height 160 :weight 'regular)) ;
-
-(if (daemonp)
-    (add-hook 'after-make-frame-functions
-              (lambda (frame)
-                ;; (setq doom-modeline-icon t)
-                (with-selected-frame frame
-                  (jf/set-font-faces))))
-    (jf/set-font-faces))
-(set-face-attribute 'default nil :font "JetBrainsMono Nerd Font" :height 160)
+(add-hook 'after-make-frame-functions #'jf/apply-fonts)
+(jf/apply-fonts)
 
 (use-package org
   :ensure nil
   :hook ((org-mode . visual-line-mode)
-         (org-mode . org-fold-hide-drawer-all)
-         (org-mode . org-indent-mode))
+         (org-mode . org-fold-hide-drawer-all))
   :custom-face
-  (org-level-1 ((t (:height 1.3))))
-  (org-level-2 ((t (:height 1.25))))
-  (org-level-3 ((t (:height 1.2))))
-  (org-level-4 ((t (:height 1.15))))
-  (org-level-5 ((t (:height 1.1))))
-  (org-level-6 ((t (:height 1.05))))
-  (org-level-7 ((t (:height 1.0))))
-  (org-level-8 ((t (:height 1.0))))
+  (org-level-1 ((t (:height 1.8 :weight bold))))
+  (org-level-2 ((t (:height 1.4 :weight bold))))
+  (org-level-3 ((t (:height 1.2 :weight bold))))
   :config
   (setq org-directory "~/org/"
+        org-hide-leading-stars nil
         org-agenda-files '("~/org/tasks.org" "~/org/people.org")
         org-todo-keywords '((sequence "TODO(t)" "WAIT(w!)" "|" "CANCELLED(c!)" "DONE(d!)"))
         org-ellipsis " ▾"
@@ -216,12 +210,13 @@
         org-log-done 'time
         org-log-into-drawer t
         org-tags-column 0)
+  
+  (remove-hook 'org-mode-hook #'jf/org-hide-stars-hard)
+  (remove-hook 'org-mode-hook #'jf/org-hide-stars-completely)
+  (remove-hook 'org-mode-hook #'jf/org-hide-stars-physically)
+
   (with-eval-after-load 'ol
     (setf (cdr (assq 'file org-link-frame-setup)) #'find-file)))
-
-(use-package org-bullets
-  :after org
-  :hook (org-mode . org-bullets-mode))
 
 (use-package org-roam
   :defer t
@@ -258,59 +253,37 @@
   (org-roam-db-autosync-mode 1))
  
 (use-package org-roam-ui
-  :after org-roam)
-
-(use-package org-anki
-  :ensure t 
+  :after org-roam
   :config
-  (setq org-html-with-latex 'verbatim))
+  (setq org-roam-ui-sync-theme t
+        org-roam-ui-follow t
+        org-roam-ui-update-on-save t
+        org-roam-ui-open-on-start nil))
 
 (use-package pdf-tools
+  :mode ("\\.pdf\\'" . pdf-view-mode)
   :magic ("%PDF" . pdf-view-mode)
-  :commands (pdf-view-mode)
-  :init
-  (setq pdf-view-use-scaling t
-        pdf-view-use-imagemagick nil
-        pdf-view-continuous t
-        pdf-view-printer-name nil
-        pdf-view-display-size 'fit-width
-        pdf-view-resize-factor 1.0
-        pdf-cache-image-limit 96
-        pdf-cache-prefetch-delay 0.15)
   :config
-  (when (boundp 'pdf-view-use-unicode-lighter)
-    (setq pdf-view-use-unicode-lighter nil))
   (pdf-tools-install :no-query)
+  (setq pdf-view-use-scaling t
+        pdf-view-continuous t
+        pdf-view-display-size 'fit-width
+        pdf-view-resize-factor 1.1        
+        pdf-cache-image-limit 128         
+        pdf-cache-prefetch-delay 0.1)     
+  (setq-default pdf-view-use-unicode-lighter nil)
   (add-hook 'pdf-view-mode-hook
             (lambda ()
               (pdf-cache-prefetch-minor-mode 1)
               (display-line-numbers-mode -1)
               (blink-cursor-mode -1)
-              (auto-revert-mode -1))))
+              (auto-revert-mode -1)
+              (cursor-sensor-mode -1))))
 
 (use-package vterm
   :commands vterm
   :config
-  (setq vterm-shell "/run/current-system/sw/bin/bash")) ; Best for NixOS
-
-(defun jf/vterm-here ()
-  (interactive)
-  (let* ((dir default-directory)
-         (buf (get-buffer "*vterm*")))
-    (if (and buf (get-buffer-window buf))
-        (select-window (get-buffer-window buf))
-      (vterm-other-window))
-    (vterm-send-string (format " cd %S ; clear\n" dir))))
-
-(defun my/vterm-client-setup ()
-  (when (and (daemonp) 
-             (string= (buffer-name) "*scratch*"))
-    (vterm)))
-(add-hook 'server-after-make-frame-hook #'my/vterm-client-setup)
-
-(use-package clipetty
-  :ensure t
-  :hook (after-init . global-clipetty-mode))
+  (setq vterm-shell "/run/current-system/sw/bin/bash")) 
 
 (use-package alert
   :commands (alert)
@@ -326,31 +299,62 @@
 
 (use-package ewal-doom-themes
   :config
-  (defun my/apply-ewal-theme (&optional frame)
+  (defun jf/apply-ewal-theme (&optional frame)
     "Applies the ewal-doom-one theme to the current or new frame."
     (with-selected-frame (or frame (selected-frame))
       (load-theme 'ewal-doom-one t)))
 
-  (my/apply-ewal-theme)
-  (add-hook 'after-make-frame-functions #'my/apply-ewal-theme))
+  (jf/apply-ewal-theme)
+  (add-hook 'after-make-frame-functions #'jf/apply-ewal-theme))
 
 (set-frame-parameter nil 'alpha-background 80)
 (add-to-list 'default-frame-alist '(alpha-background . 80))
 
 (defun jf/pick-pdf ()
-  "Select a PDF from common folders using Ivy, then open it."
+  "Select a PDF from common folders using completing-read, then open it."
   (interactive)
-  (let ((cmd "find -L ~/college ~/library ~/downloads -type f -name '*.pdf' -not -path '*/.*'"))
-    (ivy-read "Select PDF: "
-              (split-string (shell-command-to-string cmd) "\n" t)
-              :action #'find-file
-              :caller 'jf/pick-pdf)))
+  (let* ((dirs "~/college ~/library ~/downloads")
+         (cmd (format "find -L %s -type f -name '*.pdf' -not -path '*/.*'" dirs))
+         (files (split-string (shell-command-to-string cmd) "\n" t))
+         (choice (completing-read "Select PDF: " files nil t)))
+    (when choice
+      (find-file choice))))
+
+(use-package undo-fu
+  :ensure t)
+
+(use-package evil
+  :ensure t
+  :init
+  (setq evil-want-integration t)
+  (setq evil-want-keybinding nil)
+  (setq evil-undo-system 'undo-fu)
+  (setq evil-echo-state nil)
+  :config
+  (evil-mode 1)
+  (define-key evil-motion-state-map (kbd "C-u") 'evil-scroll-up)
+  (define-key evil-motion-state-map (kbd "j") 'evil-next-visual-line)
+  (define-key evil-motion-state-map (kbd "k") 'evil-previous-visual-line))
+
+(use-package evil-collection
+  :after evil
+  :ensure t
+  :config
+  (evil-collection-init))
+
+(use-package evil-org
+  :after org
+  :config
+  (add-hook 'org-agenda-mode-hook 'evil-org-mode)
+  (require 'evil-org-agenda)
+  (evil-org-agenda-set-keys))
 
 (global-set-key (kbd "C-x C-r") #'consult-recent-file)
 (global-set-key (kbd "C-x C-b") #'ibuffer)
 (global-set-key (kbd "C-x k") #'kill-current-buffer)
 (global-set-key (kbd "C-c p") #'jf/pick-pdf)
 (global-set-key (kbd "C-c w") #'org-agenda-list)
-(global-set-key (kbd "C-c <return>") #'jf/vterm-here)
-(global-set-key (kbd "C-c n s") 'org-anki-sync-entry)
-(global-set-key (kbd "C-c n a") 'org-anki-sync-all)
+(global-set-key (kbd "C-c <return>") #'vterm)
+(global-set-key (kbd "C-c f s") #'org-anki-sync-entry)
+(global-set-key (kbd "C-<space>") #'evil-switch-to-windows-last-buffer)
+(global-set-key (kbd "C-c f a") #'org-anki-sync-all)

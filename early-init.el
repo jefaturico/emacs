@@ -16,7 +16,7 @@
                   gc-cons-percentage 0.15)))
 
 (set-face-background 'default "#000000")
-(push '(fullscreen . maximized) default-frame-alist)
+;;(push '(fullscreen . maximized) default-frame-alist)
 (push '(menu-bar-lines . 0) default-frame-alist)
 (push '(tool-bar-lines . 0) default-frame-alist)
 (push '(vertical-scroll-bars . nil) default-frame-alist)
