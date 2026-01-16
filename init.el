@@ -28,8 +28,7 @@
       large-file-warning-threshold (* 200 1024 1024)
       read-process-output-max (* 1024 1024)
       ring-bell-function 'ignore
-      file-name-shadow-mode 1
-      confirm-kill-emacs 'y-or-no-p)
+      file-name-shadow-mode 1)
 
 (add-hook 'server-after-make-frame-hook
           (lambda ()
